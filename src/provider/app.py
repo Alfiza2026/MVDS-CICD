@@ -47,6 +47,7 @@ def negotiate():
     return jsonify({
         "status": "accepted",
         "contractId": "contract-001",
+        "policyId": POLICY["id"],
         "assetId": body.get("assetId")
     }), 200
 
