@@ -19,7 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install flask requests pytest
+        run: pip install flask requests pytest pyyaml
 
       - name: Run unit tests
         run: python -m pytest tests/ -v
