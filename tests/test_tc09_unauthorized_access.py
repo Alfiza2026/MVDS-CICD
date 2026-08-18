@@ -11,7 +11,7 @@ def test_negotiate_without_token(provider_client):
     assert response.status_code == 401
     data = response.get_json()
     assert data["status"] == "rejected"
-    assert "access denied" in data["reason"]  # BUG: actual reason is "invalid credentials"
+    assert "unauthorized" in data["reason"]
 
 
 def test_negotiate_with_invalid_token(provider_client):
