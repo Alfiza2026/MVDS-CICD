@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY app.py .
 
-RUN pip install flask requests --no-cache-dir
+RUN pip install flask requests prometheus_client --no-cache-dir
 
 EXPOSE 8081
 

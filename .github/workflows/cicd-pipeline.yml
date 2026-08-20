@@ -19,7 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install flask requests pytest pyyaml
+        run: pip install flask requests pytest pyyaml prometheus_client
 
       - name: Run unit tests
         run: python -m pytest tests/ -v
@@ -105,6 +105,17 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install flask requests pytest pyyaml prometheus_client
+
+      - name: Record deploy start time
+        run: echo "DEPLOY_START=$(date +%s.%N)" >> $GITHUB_ENV
+
       - name: Set up kind cluster
         run: |
           curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
@@ -122,6 +133,12 @@ jobs:
       - name: Create namespace
         run: kubectl create namespace mvds
 
+      - name: Deploy metrics-server
+        run: |
+          kubectl apply -f k8s/monitoring/metrics-server.yaml
+          kubectl rollout status deployment/metrics-server -n kube-system --timeout=60s
+          sleep 30
+
       - name: Deploy provider
         run: kubectl apply -f k8s/provider/deployment.yaml
 
@@ -133,11 +150,67 @@ jobs:
           kubectl rollout status deployment/provider-deployment -n mvds --timeout=120s
           kubectl rollout status deployment/consumer-deployment -n mvds --timeout=120s
 
+      - name: Run pytest and save results
+        run: python -m pytest tests/ -v --junitxml=results/pytest-output.xml || true
+
       - name: Functional validation
         run: |
           kubectl port-forward service/provider-service 8080:8080 -n mvds &
           kubectl port-forward service/consumer-service 8081:8081 -n mvds &
           sleep 10
-          curl -f http://localhost:8080/health
-          curl -f http://localhost:8081/health
-          curl -f http://localhost:8081/run-full-flow
+          curl -f -H "X-Trial-Id: CI-${{ github.run_number }}" http://localhost:8080/health
+          curl -f -H "X-Trial-Id: CI-${{ github.run_number }}" http://localhost:8081/health
+          curl -f -H "X-Trial-Id: CI-${{ github.run_number }}" http://localhost:8081/run-full-flow
+
+      - name: Record deploy end time and collect metrics
+        run: |
+          DEPLOY_END=$(date +%s.%N)
+          python scripts/collect_metrics.py \
+            --trial-id "CI-${{ github.run_number }}" \
+            --condition automated \
+            --start-time ${{ env.DEPLOY_START }} \
+            --end-time $DEPLOY_END \
+            --pytest-result results/pytest-output.xml
+
+  deploy-monitoring:
+    name: Deploy Monitoring Stack
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up kind cluster
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          kind create cluster --name mvds-cluster
+
+      - name: Pull monitoring images
+        run: |
+          docker pull prom/prometheus:v2.51.0
+          docker pull grafana/grafana:10.4.0
+          kind load docker-image prom/prometheus:v2.51.0 --name mvds-cluster
+          kind load docker-image grafana/grafana:10.4.0 --name mvds-cluster
+
+      - name: Deploy Prometheus
+        run: kubectl apply -f k8s/monitoring/prometheus-deployment.yaml
+
+      - name: Deploy Grafana
+        run: kubectl apply -f k8s/monitoring/grafana-deployment.yaml
+
+      - name: Wait for monitoring rollout
+        run: |
+          kubectl rollout status deployment/prometheus-deployment -n mvds --timeout=120s
+          kubectl rollout status deployment/grafana-deployment -n mvds --timeout=120s
+
+      - name: Verify metrics endpoints
+        run: |
+          kubectl port-forward service/provider-service 8080:8080 -n mvds &
+          kubectl port-forward service/consumer-service 8081:8081 -n mvds &
+          kubectl port-forward service/prometheus-service 9090:9090 -n mvds &
+          sleep 10
+          curl -f http://localhost:8080/metrics
+          curl -f http://localhost:8081/metrics
+          curl -f http://localhost:9090/-/healthy

@@ -4,8 +4,8 @@ from unittest.mock import patch, MagicMock
 
 
 def test_provider_to_consumer_transfer(consumer_client, consumer_module):
-    with patch.object(consumer_module.requests, "get") as mock_get, \
-         patch.object(consumer_module.requests, "post") as mock_post:
+    with patch.object(consumer_module.http_requests, "get") as mock_get, \
+         patch.object(consumer_module.http_requests, "post") as mock_post:
 
         mock_get.return_value = MagicMock(
             status_code=200,
