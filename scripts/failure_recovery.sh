@@ -93,18 +93,26 @@ kubectl get pods -n "$NAMESPACE" | sed 's/^/    /'
 echo ""
 
 echo "  Provider health check after recovery:"
-# Give the new pod a moment to start serving
-sleep 3
-kubectl port-forward service/provider-service 8080:8080 -n "$NAMESPACE" &
-PF_PID=$!
-sleep 3
-HEALTH=$(curl -sf http://localhost:8080/health 2>/dev/null)
-kill $PF_PID 2>/dev/null || true
+# Use kubectl exec to check health from inside the cluster (avoids port conflicts)
+sleep 5
+HEALTH=$(kubectl exec -n "$NAMESPACE" deploy/consumer-deployment -- \
+    wget -qO- http://provider-service:8080/health 2>/dev/null)
 if [ -n "$HEALTH" ]; then
     echo "    Status: ✓ RECOVERED"
     echo "    Response: $HEALTH"
 else
-    echo "    Status: ⟳ Still starting (may need a few more seconds)"
+    # Fallback: use a different local port to avoid conflicts
+    kubectl port-forward service/provider-service 9080:8080 -n "$NAMESPACE" &
+    PF_PID=$!
+    sleep 3
+    HEALTH=$(curl -sf http://localhost:9080/health 2>/dev/null)
+    kill $PF_PID 2>/dev/null || true
+    if [ -n "$HEALTH" ]; then
+        echo "    Status: ✓ RECOVERED"
+        echo "    Response: $HEALTH"
+    else
+        echo "    Status: ⟳ Still starting (may need a few more seconds)"
+    fi
 fi
 echo ""
 
