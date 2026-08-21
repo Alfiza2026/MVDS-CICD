@@ -29,10 +29,10 @@ echo "║  Started:  $(date -Iseconds)"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 
-DEPLOY_START=$(date +%s.%N)
+DEPLOY_START=$(date +%s)
 
 # ─── STEP 1: Install Dependencies & Run Tests ────────────────────────────────
-STEP1_START=$(date +%s.%N)
+STEP1_START=$(date +%s)
 echo "┌─────────────────────────────────────────────────────────────┐"
 echo "│ STEP 1: Build and Test                                      │"
 echo "│ Start: $(date -Iseconds)                                    │"
@@ -41,13 +41,13 @@ echo "└───────────────────────�
 pip install flask requests pytest pyyaml prometheus_client --quiet
 python -m pytest tests/ -v --junitxml=results/pytest-output.xml
 
-STEP1_END=$(date +%s.%N)
-STEP1_DURATION=$(echo "$STEP1_END - $STEP1_START" | bc)
+STEP1_END=$(date +%s)
+STEP1_DURATION=$(( STEP1_END - STEP1_START ))
 echo ">>> Step 1 completed in ${STEP1_DURATION}s"
 echo ""
 
 # ─── STEP 2: Security Scan ───────────────────────────────────────────────────
-STEP2_START=$(date +%s.%N)
+STEP2_START=$(date +%s)
 echo "┌─────────────────────────────────────────────────────────────┐"
 echo "│ STEP 2: Security Scan                                       │"
 echo "│ Start: $(date -Iseconds)                                    │"
@@ -60,13 +60,13 @@ else
     echo "[SKIP] Trivy not installed locally — skipped (CI handles this)"
 fi
 
-STEP2_END=$(date +%s.%N)
-STEP2_DURATION=$(echo "$STEP2_END - $STEP2_START" | bc)
+STEP2_END=$(date +%s)
+STEP2_DURATION=$(( STEP2_END - STEP2_START ))
 echo ">>> Step 2 completed in ${STEP2_DURATION}s"
 echo ""
 
 # ─── STEP 3: Build Docker Images ────────────────────────────────────────────
-STEP3_START=$(date +%s.%N)
+STEP3_START=$(date +%s)
 echo "┌─────────────────────────────────────────────────────────────┐"
 echo "│ STEP 3: Build Docker Images                                 │"
 echo "│ Start: $(date -Iseconds)                                    │"
@@ -77,13 +77,13 @@ docker build -t consumer-connector:latest src/consumer/
 echo "Images built:"
 docker images | grep -E "provider-connector|consumer-connector"
 
-STEP3_END=$(date +%s.%N)
-STEP3_DURATION=$(echo "$STEP3_END - $STEP3_START" | bc)
+STEP3_END=$(date +%s)
+STEP3_DURATION=$(( STEP3_END - STEP3_START ))
 echo ">>> Step 3 completed in ${STEP3_DURATION}s"
 echo ""
 
 # ─── STEP 4: Validate Kubernetes Manifests ───────────────────────────────────
-STEP4_START=$(date +%s.%N)
+STEP4_START=$(date +%s)
 echo "┌─────────────────────────────────────────────────────────────┐"
 echo "│ STEP 4: Validate Manifests                                  │"
 echo "│ Start: $(date -Iseconds)                                    │"
@@ -102,13 +102,13 @@ with open('k8s/consumer/deployment.yaml') as f:
 print(f'  Consumer manifest valid - {len(docs)} documents')
 "
 
-STEP4_END=$(date +%s.%N)
-STEP4_DURATION=$(echo "$STEP4_END - $STEP4_START" | bc)
+STEP4_END=$(date +%s)
+STEP4_DURATION=$(( STEP4_END - STEP4_START ))
 echo ">>> Step 4 completed in ${STEP4_DURATION}s"
 echo ""
 
 # ─── STEP 5: Deploy to Kubernetes ───────────────────────────────────────────
-STEP5_START=$(date +%s.%N)
+STEP5_START=$(date +%s)
 echo "┌─────────────────────────────────────────────────────────────┐"
 echo "│ STEP 5: Deploy to Kubernetes                                │"
 echo "│ Start: $(date -Iseconds)                                    │"
@@ -148,13 +148,13 @@ kubectl rollout status deployment/consumer-deployment -n "$NAMESPACE" --timeout=
 echo "  [$(date -Iseconds)] All pods ready"
 kubectl get pods -n "$NAMESPACE"
 
-STEP5_END=$(date +%s.%N)
-STEP5_DURATION=$(echo "$STEP5_END - $STEP5_START" | bc)
+STEP5_END=$(date +%s)
+STEP5_DURATION=$(( STEP5_END - STEP5_START ))
 echo ">>> Step 5 completed in ${STEP5_DURATION}s"
 echo ""
 
 # ─── STEP 6: Deploy Monitoring Stack ────────────────────────────────────────
-STEP6_START=$(date +%s.%N)
+STEP6_START=$(date +%s)
 echo "┌─────────────────────────────────────────────────────────────┐"
 echo "│ STEP 6: Deploy Monitoring Stack                             │"
 echo "│ Start: $(date -Iseconds)                                    │"
@@ -177,13 +177,13 @@ kubectl rollout status deployment/grafana-deployment -n "$NAMESPACE" --timeout=1
 
 echo "  [$(date -Iseconds)] Monitoring stack ready"
 
-STEP6_END=$(date +%s.%N)
-STEP6_DURATION=$(echo "$STEP6_END - $STEP6_START" | bc)
+STEP6_END=$(date +%s)
+STEP6_DURATION=$(( STEP6_END - STEP6_START ))
 echo ">>> Step 6 completed in ${STEP6_DURATION}s"
 echo ""
 
 # ─── STEP 7: Functional Validation ──────────────────────────────────────────
-STEP7_START=$(date +%s.%N)
+STEP7_START=$(date +%s)
 echo "┌─────────────────────────────────────────────────────────────┐"
 echo "│ STEP 7: Functional Validation                               │"
 echo "│ Start: $(date -Iseconds)                                    │"
@@ -204,14 +204,14 @@ curl -sf -H "X-Trial-Id: $TRIAL_ID" http://localhost:8081/run-full-flow | python
 
 kill $PF_PROVIDER $PF_CONSUMER 2>/dev/null || true
 
-STEP7_END=$(date +%s.%N)
-STEP7_DURATION=$(echo "$STEP7_END - $STEP7_START" | bc)
+STEP7_END=$(date +%s)
+STEP7_DURATION=$(( STEP7_END - STEP7_START ))
 echo ">>> Step 7 completed in ${STEP7_DURATION}s"
 echo ""
 
 # ─── SUMMARY ─────────────────────────────────────────────────────────────────
-DEPLOY_END=$(date +%s.%N)
-TOTAL_TIME=$(echo "$DEPLOY_END - $DEPLOY_START" | bc)
+DEPLOY_END=$(date +%s)
+TOTAL_TIME=$(( DEPLOY_END - DEPLOY_START ))
 
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║  DEPLOYMENT SUMMARY                                         ║"

@@ -35,7 +35,7 @@ kubectl exec -n "$NAMESPACE" deploy/consumer-deployment -- \
 echo ""
 
 # ─── PHASE 2: Inject failure — kill the provider pod ─────────────────────────
-FAILURE_TIME=$(date +%s.%N)
+FAILURE_TIME=$(date +%s)
 echo "┌─────────────────────────────────────────────────────────────┐"
 echo "│ PHASE 2: Inject Failure                                     │"
 echo "│ Timestamp: $(date -Iseconds)                                │"
@@ -84,8 +84,8 @@ echo ""
 echo "  Waiting for provider deployment rollout..."
 kubectl rollout status deployment/provider-deployment -n "$NAMESPACE" --timeout=60s
 
-RECOVERY_TIME=$(date +%s.%N)
-RECOVERY_DURATION=$(echo "$RECOVERY_TIME - $FAILURE_TIME" | bc)
+RECOVERY_TIME=$(date +%s)
+RECOVERY_DURATION=$(( RECOVERY_TIME - FAILURE_TIME ))
 
 echo ""
 echo "  Pod status after recovery:"
