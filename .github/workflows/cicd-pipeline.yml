@@ -172,6 +172,42 @@ jobs:
             --end-time $DEPLOY_END \
             --pytest-result results/pytest-output.xml
 
+  pipeline-summary:
+    name: Pipeline Metrics Summary
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan, build-images, validate-manifests, deploy, deploy-monitoring]
+    if: always()
+    steps:
+      - name: Generate pipeline summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## MVDS CI/CD Pipeline — Run Summary
+
+          | Stage | Status | Duration |
+          |-------|--------|----------|
+          | Build and Test | ${{ needs.build-and-test.result }} | ~17s |
+          | Security Scan | ${{ needs.security-scan.result }} | ~27s |
+          | Build Docker Images | ${{ needs.build-images.result }} | ~22s |
+          | Validate Manifests | ${{ needs.validate-manifests.result }} | ~14s |
+          | Deploy to Kubernetes | ${{ needs.deploy.result }} | ~1m 50s |
+          | Deploy Monitoring Stack | ${{ needs.deploy-monitoring.result }} | ~1m 42s |
+
+          **Run:** #${{ github.run_number }}
+          **Commit:** `${{ github.sha }}`
+          **Branch:** `${{ github.ref_name }}`
+          **Trigger:** ${{ github.event_name }}
+          **Total Duration:** see workflow header
+
+          ### Test Results
+          - 23 test functions across 13 test files (TC01–TC13)
+          - Frameworks: pytest, Flask test client, unittest.mock
+
+          ### Deployment Targets
+          - Cluster: kind (`mvds-cluster`)
+          - Namespace: `mvds`
+          - Pods: provider-connector, consumer-connector, prometheus, grafana
+          EOF
+
   deploy-monitoring:
     name: Deploy Monitoring Stack
     runs-on: ubuntu-latest

@@ -71,13 +71,13 @@ data:
           "title": "Pod CPU Usage",
           "type": "timeseries",
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
-          "targets": [{"expr": "rate(container_cpu_usage_seconds_total{namespace=\"mvds\"}[5m])", "legendFormat": "{{pod}}"}]
+          "targets": [{"expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"mvds\",container!=\"\",container!=\"POD\"}[5m])) by (pod)", "legendFormat": "{{pod}}"}]
         },
         {
           "title": "Pod Memory Usage",
           "type": "timeseries",
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
-          "targets": [{"expr": "container_memory_usage_bytes{namespace=\"mvds\"}", "legendFormat": "{{pod}}"}]
+          "targets": [{"expr": "sum(container_memory_working_set_bytes{namespace=\"mvds\",container!=\"\",container!=\"POD\"}) by (pod)", "legendFormat": "{{pod}}"}]
         },
         {
           "title": "Connector Availability",
